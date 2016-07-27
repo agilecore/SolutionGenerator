@@ -1,0 +1,10 @@
+D:\Projetos\SolutionUnifytech\SmartAdmin.Gerador.v1\bin\Debug\Unifytech.Gerador.v1.exe.config
+D:\Projetos\SolutionUnifytech\SmartAdmin.Gerador.v1\bin\Debug\Unifytech.Gerador.v1.exe
+D:\Projetos\SolutionUnifytech\SmartAdmin.Gerador.v1\bin\Debug\Unifytech.Gerador.v1.pdb
+D:\Projetos\SolutionUnifytech\SmartAdmin.Gerador.v1\bin\Debug\MySql.Data.dll
+D:\Projetos\SolutionUnifytech\SmartAdmin.Gerador.v1\obj\Debug\Unifytech.Gerador.v1.csprojResolveAssemblyReference.cache
+D:\Projetos\SolutionUnifytech\SmartAdmin.Gerador.v1\obj\Debug\Unifytech.Gerador.v1.exe
+D:\Projetos\SolutionUnifytech\SmartAdmin.Gerador.v1\obj\Debug\Unifytech.Gerador.v1.pdb
+C:\Users\Rodrigo\Desktop\SmartAdmin.Gerador.v1\bin\Debug\Unifytech.Gerador.v1.exe.config
+C:\Users\Rodrigo\Desktop\SmartAdmin.Gerador.v1\obj\Debug\Unifytech.Gerador.v1.exe
+C:\Users\Rodrigo\Desktop\SmartAdmin.Gerador.v1\obj\Debug\Unifytech.Gerador.v1.pdb
