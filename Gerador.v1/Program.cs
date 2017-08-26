@@ -15,7 +15,7 @@ namespace Gerador
     {
         private const int MILLISECONDS = 1000;
         private static bool VERIFY_TIME = Convert.ToBoolean(ConfigurationManager.AppSettings["Temporizador"].ToString());
-        public static EDataBase DatabaseType = EDataBase.MySql;
+        public static EDataBase DatabaseType = EDataBase.SqlServer;
 
         static void Main(string[] args)
         {
@@ -45,11 +45,11 @@ namespace Gerador
 
         #region Métodos privados de geração
 
-        private static void MakeProcess(string AnswerQuestion)
+        internal static void MakeProcess(string AnswerQuestion)
         {
             Console.ForegroundColor = ConsoleColor.Gray;
 
-            if (AnswerQuestion == "1")
+            if (AnswerQuestion == "1")            
             {
                 MakeData();
                 MakeDomain();
@@ -73,7 +73,7 @@ namespace Gerador
             ReadFromConsole();
         }
 
-        public static void MakeData()
+        internal static void MakeData()
         {
             MakeBase();
             MakeModels();
@@ -84,7 +84,7 @@ namespace Gerador
             MakeUnitOfWork();
         }
 
-        private static void MakeDomain()
+        internal static void MakeDomain()
         {
             var ConfigTable = new TableToClass();
             var BuildClass = new Domain();
@@ -101,20 +101,19 @@ namespace Gerador
                 WriteToConsole("-> " + BuildClass.BuildModelsSpecialized(Table.Value.ClassName));
                 if (VERIFY_TIME) { TimeSleep(MILLISECONDS); }
 
-                WriteToConsole("-> " + BuildClass.BuildModelsValidations(Table));
-                if (VERIFY_TIME) { TimeSleep(MILLISECONDS); }
+                //WriteToConsole("-> " + BuildClass.BuildModelsValidations(Table));
+                //if (VERIFY_TIME) { TimeSleep(MILLISECONDS); }
             }
-
-            WriteToConsole("-> " + BuildClass.BuildUnitOfWork(GroupTables));
-            if (VERIFY_TIME) { TimeSleep(MILLISECONDS); }
 
         }
 
-        private static void MakeController()
+        internal static void MakeController()
         {
             var ConfigTable = new TableToClass();
             var BuildClass = new Presentation();
             var GroupTables = ConfigTable.GetTableMapper();
+
+            
 
             WriteToConsole(" ");
             WriteToConsole("Gerando Controllers...");
@@ -124,12 +123,16 @@ namespace Gerador
 
             foreach (var Table in GroupTables)
             {
-                WriteToConsole("-> " + BuildClass.BuildController(Table.Value.ClassName));
-                if (VERIFY_TIME) { TimeSleep(MILLISECONDS); }
+                //CreateController = true entao gera controller na camada de apresentacao.
+                if (Table.Value.CreateController)
+                {
+                    WriteToConsole("-> " + BuildClass.BuildController(Table.Value.ClassName));
+                    if (VERIFY_TIME) { TimeSleep(MILLISECONDS); }
+                }  
             }
         }
 
-        private static void MakeBase()
+        internal static void MakeBase()
         {
             var BuildClass = new Data();
 
@@ -140,7 +143,7 @@ namespace Gerador
             if (VERIFY_TIME) { TimeSleep(MILLISECONDS); }
         }
 
-        private static void MakeModels()
+        internal static void MakeModels()
         {
             var ConfigTable = new TableToClass();
             var BuildClass = new Data();
@@ -156,7 +159,7 @@ namespace Gerador
             }
         }
 
-        private static void MakeMappers()
+        internal static void MakeMappers()
         {
             var ConfigTable = new TableToClass();
             var BuildClass = new Data();
@@ -172,7 +175,7 @@ namespace Gerador
             }
         }
 
-        private static void MakeContext()
+        internal static void MakeContext()
         {
             var ConfigTable = new TableToClass();
             var BuildClass = new Data();
@@ -185,7 +188,7 @@ namespace Gerador
             if (VERIFY_TIME) { TimeSleep(MILLISECONDS); }
         }
 
-        private static void MakeRepository()
+        internal static void MakeRepository()
         {
             var BuildClass = new Data();
 
@@ -196,7 +199,7 @@ namespace Gerador
             if (VERIFY_TIME) { TimeSleep(MILLISECONDS); }
         }
 
-        private static void MakeIRepository()
+        internal static void MakeIRepository()
         {
             var BuildClass = new Data();
 
@@ -207,7 +210,7 @@ namespace Gerador
             if (VERIFY_TIME) { TimeSleep(MILLISECONDS); }
         }
 
-        private static void MakeUnitOfWork()
+        internal static void MakeUnitOfWork()
         {
             var ConfigTable = new TableToClass();
             var BuildClass = new Data();
@@ -234,14 +237,14 @@ namespace Gerador
         private static void WriteHeader()
         {
             Console.Title = typeof(Program).Name;
-            Console.ForegroundColor = ConsoleColor.Yellow;
+            Console.ForegroundColor = ConsoleColor.Green;
 
             var ConsoleCopyRight = new StringBuilder();
 
             Console.WriteLine("#***********************************************************");
-            Console.WriteLine("# Projeto: Unifytech.Gerador");
-            Console.WriteLine("# Console: Gerador de Camadas para Aplicações");
-            Console.WriteLine("# Empresa: Agilecore Software");
+            Console.WriteLine("# Projeto: Gerador.v1                                       ");
+            Console.WriteLine("# Console: Gerador de Camadas para Aplicações Web           ");
+            Console.WriteLine("# Empresa: Agilecore                                        ");
             Console.WriteLine("#***********************************************************");
 
             WriteToConsole(ConsoleCopyRight.ToString());

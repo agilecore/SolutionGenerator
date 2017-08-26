@@ -1,0 +1,6 @@
+C:\Users\rodrigo.fernandes\Documents\GitHub\SolutionHarpia\Solution HarpiaGed\HarpiaGed.Generator\bin\Debug\HarpiaGed.Gerador.exe.config
+C:\Users\rodrigo.fernandes\Documents\GitHub\SolutionHarpia\Solution HarpiaGed\HarpiaGed.Generator\bin\Debug\HarpiaGed.Gerador.exe
+C:\Users\rodrigo.fernandes\Documents\GitHub\SolutionHarpia\Solution HarpiaGed\HarpiaGed.Generator\bin\Debug\HarpiaGed.Gerador.pdb
+C:\Users\rodrigo.fernandes\Documents\GitHub\SolutionHarpia\Solution HarpiaGed\HarpiaGed.Generator\obj\Debug\HarpiaGed.Gerador.csprojResolveAssemblyReference.cache
+C:\Users\rodrigo.fernandes\Documents\GitHub\SolutionHarpia\Solution HarpiaGed\HarpiaGed.Generator\obj\Debug\HarpiaGed.Gerador.exe
+C:\Users\rodrigo.fernandes\Documents\GitHub\SolutionHarpia\Solution HarpiaGed\HarpiaGed.Generator\obj\Debug\HarpiaGed.Gerador.pdb

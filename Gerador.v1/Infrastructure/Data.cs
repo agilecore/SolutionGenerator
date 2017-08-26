@@ -18,11 +18,13 @@ namespace Gerador.Infrastructure
     {
         private StringBuilder TextClass;
         private String SufixoModels = "Dto";
+        private String SufixoModelsExtension = "DtoSpecialized";
         private String SufixoMapper = "Mapper";
         private String FilePath = ConfigurationManager.AppSettings["CamadaDeAcessos"].ToString();
+        private String FilePathCommon = ConfigurationManager.AppSettings["CamadaComum"].ToString();
         private String ProjectName = ConfigurationManager.AppSettings["NomeDoProjeto"].ToString();
         private String DatabaseSchema = ConfigurationManager.AppSettings["NomeDoSchema"].ToString();
-        
+
         private EDataBase DatabaseType = Gerador.Program.DatabaseType;
 
         public String BuildBase()
@@ -34,7 +36,7 @@ namespace Gerador.Infrastructure
             TextClass.AppendLine("using System.Collections.Generic;");
             TextClass.AppendLine("using System.Threading.Tasks;");
             TextClass.AppendLine("");
-            TextClass.AppendLine("namespace " + ProjectName + ".Data.Model");
+            TextClass.AppendLine("namespace " + ProjectName + ".Common");
             TextClass.AppendLine("{");
             TextClass.AppendLine("    public class Base");
             TextClass.AppendLine("    {");
@@ -42,7 +44,7 @@ namespace Gerador.Infrastructure
             TextClass.AppendLine("    }");
             TextClass.AppendLine("}");
 
-            return CreateFile("Base", "Models"); 
+            return CreateFileCommom("Base", "Models");
         }
 
         public String BuildModels(KeyValuePair<String, ModelConfig> TableSetting)
@@ -59,8 +61,11 @@ namespace Gerador.Infrastructure
             TextClass.AppendLine("using System.Collections.Generic;");
             TextClass.AppendLine("using System.Threading.Tasks;");
             TextClass.AppendLine("");
-            TextClass.AppendLine("namespace " + ProjectName + ".Data.Model");
+            TextClass.AppendLine("namespace " + ProjectName + ".Common");
             TextClass.AppendLine("{");
+            TextClass.AppendLine("    /// <summary>");
+            TextClass.AppendLine("    /// Nao alterar essa classe pois ela é o objeto identico a tabela do banco de dados.");
+            TextClass.AppendLine("    /// </summary>");
             TextClass.AppendLine("    public class " + String.Concat(DataModel.ClassName, SufixoModels) + " : Base");
             TextClass.AppendLine("    {");
 
@@ -144,7 +149,31 @@ namespace Gerador.Infrastructure
             TextClass.AppendLine("    }");
             TextClass.AppendLine("}");
 
-            return CreateFile(String.Concat(DataModel.ClassName, SufixoModels), @"Models\" + DataModel.ClassName); 
+            return CreateFileMadatory(String.Concat(DataModel.ClassName, SufixoModels), FilePathCommon + @"\Models");
+        }
+
+        public String BuildModelsExtension(KeyValuePair<String, ModelConfig> TableSetting)
+        {
+            var TableName = TableSetting.Key;
+            var DataModel = TableSetting.Value;
+            var TableSchema = Utils.GetTableSchema(TableName, DatabaseType);
+            var ColumnDataType = String.Empty;
+
+            TextClass = new StringBuilder();
+            TextClass.AppendLine("using System;");
+            TextClass.AppendLine("using System.Linq;");
+            TextClass.AppendLine("using System.Text;");
+            TextClass.AppendLine("using System.Collections.Generic;");
+            TextClass.AppendLine("using System.Threading.Tasks;");
+            TextClass.AppendLine("");
+            TextClass.AppendLine("namespace " + ProjectName + ".Common");
+            TextClass.AppendLine("{");
+            TextClass.AppendLine("    public class " + String.Concat(DataModel.ClassName, SufixoModelsExtension) + " : Base");
+            TextClass.AppendLine("    {");
+            TextClass.AppendLine("    }");
+            TextClass.AppendLine("}");
+
+            return CreateFileCommom(String.Concat(DataModel.ClassName, SufixoModelsExtension), @"Models\" + DataModel.ClassName);
         }
 
         public String BuildMapper(KeyValuePair<String, ModelConfig> TableSetting)
@@ -154,14 +183,10 @@ namespace Gerador.Infrastructure
             var TableSchema = Utils.GetTableSchema(TableName, DatabaseType);
 
             TextClass = new StringBuilder();
-            TextClass.AppendLine("using System;");
-            TextClass.AppendLine("using System.Collections.Generic;");
             TextClass.AppendLine("using System.Data.Entity.ModelConfiguration;");
-            TextClass.AppendLine("using System.Linq;");
-            TextClass.AppendLine("using System.Text;");
-            TextClass.AppendLine("using System.Threading.Tasks;");
+            TextClass.AppendLine("using " + ProjectName + ".Common;");
             TextClass.AppendLine("");
-            TextClass.AppendLine("namespace " + ProjectName + ".Data.Model");
+            TextClass.AppendLine("namespace " + ProjectName + ".Data");
             TextClass.AppendLine("{");
             TextClass.AppendLine("    public class " + String.Concat(DataModel.ClassName, SufixoMapper) + " : EntityTypeConfiguration<" + String.Concat(DataModel.ClassName, SufixoModels) + ">");
             TextClass.AppendLine("    {");
@@ -175,7 +200,7 @@ namespace Gerador.Infrastructure
             foreach (var ColumnMapper in TableSchema.CollectionColumn)
             {
                 if (ColumnMapper.ColumnKey != "pk")
-                {   
+                {
                     // Trata somente campos de textos
                     if ((ColumnMapper.DataType == "char") || (ColumnMapper.DataType == "varchar") || (ColumnMapper.DataType == "varchar2") || (ColumnMapper.DataType == "nvarchar2") || (ColumnMapper.DataType == "text") || (ColumnMapper.DataType == "longtext") || (ColumnMapper.DataType == "clob") || (ColumnMapper.DataType == "long") || (ColumnMapper.DataType == "nchar") || (ColumnMapper.DataType == "nclob") || (ColumnMapper.DataType == "rowid"))
                     {
@@ -197,7 +222,7 @@ namespace Gerador.Infrastructure
                         {
                             if (ColumnMapper.MaxLenght != String.Empty)
                             {
-                               if (ColumnMapper.DataType == "longtext")
+                                if (ColumnMapper.DataType == "longtext")
                                     TextClass.AppendLine("            this.Property(_ => _." + ColumnMapper.ColumnName + ").IsRequired();");
                                 else
                                     TextClass.AppendLine("            this.Property(_ => _." + ColumnMapper.ColumnName + ").IsRequired().HasMaxLength(" + ColumnMapper.MaxLenght + ");");
@@ -238,7 +263,7 @@ namespace Gerador.Infrastructure
                             else
                                 TextClass.AppendLine("            this.Property(_ => _." + ColumnMapper.ColumnName + ");");
                         }
-                    } 
+                    }
                 }
             }
 
@@ -260,7 +285,7 @@ namespace Gerador.Infrastructure
             TextClass.AppendLine("    }");
             TextClass.AppendLine("}");
 
-            return CreateFile(String.Concat(DataModel.ClassName, SufixoMapper), @"Models\" + DataModel.ClassName);
+            return CreateFile(String.Concat(DataModel.ClassName, SufixoMapper), @"Mapper\" + DataModel.ClassName);
         }
 
         public String BuildUnitOfWork(Dictionary<String, ModelConfig> GroupTables)
@@ -268,81 +293,34 @@ namespace Gerador.Infrastructure
             var OutputClassDataContextName = ConfigurationManager.AppSettings["NomeDoContext"].ToString();
 
             TextClass = new StringBuilder();
+
             TextClass.AppendLine("using System;");
             TextClass.AppendLine("using System.Collections.Generic;");
             TextClass.AppendLine("using System.Linq;");
             TextClass.AppendLine("using System.Text;");
             TextClass.AppendLine("using System.Threading.Tasks;");
-            TextClass.AppendLine("using " + ProjectName + ".Data.Model;");
-            TextClass.AppendLine("using " + ProjectName + ".Data.Repository;");
-            TextClass.AppendLine("using " + ProjectName + ".Data.ApplicationContext;");
+            TextClass.AppendLine("using " + ProjectName + ".Data;");
             TextClass.AppendLine("");
             TextClass.AppendLine("namespace " + ProjectName + ".Data");
             TextClass.AppendLine("{");
-            TextClass.AppendLine("    public class UnitOfWork : IDisposable");
-            TextClass.AppendLine("    {");
-            TextClass.AppendLine("        private " + OutputClassDataContextName + " _Context = new " + OutputClassDataContextName + "();");
-            TextClass.AppendLine("        private bool _Disposed = false;");
-            TextClass.AppendLine("");
-
-            foreach (var item in GroupTables)
-            {
-                var Model = item.Value;
-
-                TextClass.AppendLine("        private RepositoryGeneric<" + String.Concat(Model.ClassName, SufixoModels) + "> _" + Model.ClassName.ToLower() + "Repository;");
-            }
-
-            TextClass.AppendLine("");
-
-            foreach (var item in GroupTables)
-            {
-                var Model = item.Value;
-
-                TextClass.AppendLine("        public RepositoryGeneric<" + String.Concat(Model.ClassName, SufixoModels) + "> " + Model.ClassName + "Repository");
-                TextClass.AppendLine("        {");
-                TextClass.AppendLine("            get");
-                TextClass.AppendLine("            {");
-                TextClass.AppendLine("                if (this._" + Model.ClassName.ToLower() + "Repository == null)");
-                TextClass.AppendLine("                {");
-                TextClass.AppendLine("                    this._" + Model.ClassName.ToLower() + "Repository = new RepositoryGeneric<" + String.Concat(Model.ClassName, SufixoModels) + ">(_Context);");
-                TextClass.AppendLine("                }");
-                TextClass.AppendLine("                return _" + Model.ClassName.ToLower() + "Repository;");
-                TextClass.AppendLine("            }");
-                TextClass.AppendLine("        }");
-                TextClass.AppendLine("");
-            }
-
-            TextClass.AppendLine("        public void Dispose()");
-            TextClass.AppendLine("        {");
-            TextClass.AppendLine("            Clear(true);");
-            TextClass.AppendLine("            GC.SuppressFinalize(this);");
-            TextClass.AppendLine("        }");
-            TextClass.AppendLine("");
-            TextClass.AppendLine("        private void Clear(bool disposing)");
-            TextClass.AppendLine("        {");
-            TextClass.AppendLine("            if (!this._Disposed)");
-            TextClass.AppendLine("            {");
-            TextClass.AppendLine("                if (disposing)");
-            TextClass.AppendLine("                {");
-            TextClass.AppendLine("                    _Context.Dispose();");
-
-            foreach (var item in GroupTables)
-            {
-                var Model = item.Value;
-                TextClass.AppendLine("                    _" + Model.ClassName.ToLower() + "Repository = null;");
-            }
-
-            TextClass.AppendLine("                }");
-            TextClass.AppendLine("            }");
-            TextClass.AppendLine("            _Disposed = true;");
-            TextClass.AppendLine("        }");
-            TextClass.AppendLine("");
-            TextClass.AppendLine("        ~UnitOfWork()");
-            TextClass.AppendLine("        {");
-            TextClass.AppendLine("            Clear(false);");
-            TextClass.AppendLine("        }");
-            TextClass.AppendLine("    }");
-            TextClass.AppendLine("}");
+            TextClass.AppendLine("    public class UnitOfWork                                                                                ");
+            TextClass.AppendLine("    {                                                                                                      ");
+            TextClass.AppendLine("        private " + OutputClassDataContextName + " _dbContext = new " + OutputClassDataContextName + "();  ");
+            TextClass.AppendLine("        public Type _type { get; set; }                                                                    ");
+            TextClass.AppendLine("        public Repository<TEntityType> GetRepository<TEntityType>() where TEntityType : class              ");
+            TextClass.AppendLine("        {                                                                                                  ");
+            TextClass.AppendLine("            return (new Repository<TEntityType>(this._dbContext));                                         ");
+            TextClass.AppendLine("        }                                                                                                  ");
+            TextClass.AppendLine("        public void SaveChage()                                                                            ");
+            TextClass.AppendLine("        {                                                                                                  ");
+            TextClass.AppendLine("            _dbContext.SaveChanges();                                                                      ");
+            TextClass.AppendLine("        }                                                                                                  ");
+            TextClass.AppendLine("        public void SaveChageAsync()                                                                       ");
+            TextClass.AppendLine("        {                                                                                                  ");
+            TextClass.AppendLine("            _dbContext.SaveChangesAsync();                                                                 ");
+            TextClass.AppendLine("        }                                                                                                  ");
+            TextClass.AppendLine("    }                                                                                                      ");
+            TextClass.AppendLine("}                                                                                                          ");
 
             var FileName = String.Format(@"{0}.{1}", "UnitOfWork", "cs");
             var FullFile = String.Format(@"{0}\{1}", FilePath, FileName);
@@ -350,7 +328,7 @@ namespace Gerador.Infrastructure
 
             if (!DirInfo.Exists) { DirInfo.Create(); }
             using (TextWriter Writer = File.CreateText(FullFile)) { Writer.WriteLine(TextClass.ToString()); }
-            return FileName; 
+            return FileName;
         }
 
         public String BuildContext(Dictionary<String, ModelConfig> GroupTables)
@@ -358,61 +336,50 @@ namespace Gerador.Infrastructure
             var OutputClassDataContextName = ConfigurationManager.AppSettings["NomeDoContext"].ToString();
 
             TextClass = new StringBuilder();
-            TextClass.AppendLine("using System;");
-            TextClass.AppendLine("using System.Text;");
-            TextClass.AppendLine("using System.Collections.Generic;");
-            TextClass.AppendLine("using System.Data.Entity;");
-            TextClass.AppendLine("using System.Data.Entity.Infrastructure;");
-            TextClass.AppendLine("using System.Data.Entity.ModelConfiguration.Conventions;");
-            TextClass.AppendLine("using System.ComponentModel.DataAnnotations.Schema;");
-            TextClass.AppendLine("using System.Linq;");
-            TextClass.AppendLine("using System.Configuration;");
-            TextClass.AppendLine("using System.Threading.Tasks;");
-            TextClass.AppendLine("using " + ProjectName + ".Data.Model;");
-            TextClass.AppendLine("");
-            TextClass.AppendLine("namespace " + ProjectName + ".Data.ApplicationContext");
-            TextClass.AppendLine("");
-            TextClass.AppendLine("{");
-            TextClass.AppendLine("    public class " + OutputClassDataContextName + " : DbContext");
-            TextClass.AppendLine("    {");
+            TextClass.AppendLine("using System.Data.Entity;                                                               ");
+            TextClass.AppendLine("using " + ProjectName + ".Common;                                                       ");
+            TextClass.AppendLine("                                                                                        ");
+            TextClass.AppendLine("namespace " + ProjectName + ".Data                                                      ");
+            TextClass.AppendLine("{                                                                                       ");
+            TextClass.AppendLine("    public class " + OutputClassDataContextName + " : DbContext                         ");
+            TextClass.AppendLine("    {                                                                                   ");
 
             foreach (var item in GroupTables)
             {
                 var Model = item.Value;
-                TextClass.AppendLine("        public DbSet<" + String.Concat(Model.ClassName, SufixoModels) + "> " + Model.ClassName + " { get; set; }");
+                TextClass.AppendLine("             public DbSet<" + String.Concat(Model.ClassName, SufixoModels) + "> " + Model.ClassName + " { get; set; }");
             }
 
-            TextClass.AppendLine("");
-            TextClass.AppendLine("        static " + OutputClassDataContextName + "()");
-            TextClass.AppendLine("        {");
-            TextClass.AppendLine("            Database.SetInitializer<" + OutputClassDataContextName + ">(null);");
-            TextClass.AppendLine("        }");
-            TextClass.AppendLine("");
-            TextClass.AppendLine("        public " + OutputClassDataContextName + "() : base(\"Name=DefaultConnection\")");
-            TextClass.AppendLine("        {");
-            TextClass.AppendLine("             this.Configuration.AutoDetectChangesEnabled = true;");
-            TextClass.AppendLine("             this.Configuration.ValidateOnSaveEnabled = false;");
-            TextClass.AppendLine("             this.Configuration.LazyLoadingEnabled = false;");
-            TextClass.AppendLine("             this.Configuration.ProxyCreationEnabled = false;");
-            TextClass.AppendLine("             //this.Configuration.EnsureTransactionsForFunctionsAndCommands = false;");
-            TextClass.AppendLine("             this.Configuration.ProxyCreationEnabled = false;");
-            TextClass.AppendLine("             this.Configuration.UseDatabaseNullSemantics = true;");
-            TextClass.AppendLine("        }");
-            TextClass.AppendLine("");
-            TextClass.AppendLine("        protected override void OnModelCreating(DbModelBuilder ModelBuilder)");
-            TextClass.AppendLine("        {");
+            TextClass.AppendLine("                                                                                         ");
+            TextClass.AppendLine("        static " + OutputClassDataContextName + "()                                      ");
+            TextClass.AppendLine("        {                                                                                ");
+            TextClass.AppendLine("             Database.SetInitializer<" + OutputClassDataContextName + ">(null);          ");
+            TextClass.AppendLine("        }                                                                                ");
+            TextClass.AppendLine("                                                                                         ");
+            TextClass.AppendLine("        public " + OutputClassDataContextName + "() : base(\"Name = DefaultConnection\") ");
+            TextClass.AppendLine("        {                                                                                ");
+            TextClass.AppendLine("             this.Configuration.AutoDetectChangesEnabled = true;                         ");
+            TextClass.AppendLine("             this.Configuration.ValidateOnSaveEnabled = false;                           ");
+            TextClass.AppendLine("             this.Configuration.LazyLoadingEnabled = false;                              ");
+            TextClass.AppendLine("             this.Configuration.ProxyCreationEnabled = false;                            ");
+            TextClass.AppendLine("             this.Configuration.UseDatabaseNullSemantics = true;                         ");
+            TextClass.AppendLine("        }                                                                                ");
+            TextClass.AppendLine("                                                                                         ");
+            TextClass.AppendLine("        protected override void OnModelCreating(DbModelBuilder ModelBuilder)             ");
+            TextClass.AppendLine("        {                                                                                ");
 
             foreach (var item in GroupTables)
             {
                 var Model = item.Value;
-                TextClass.AppendLine("             ModelBuilder.Configurations.Add(new " + Model.ClassName + "Mapper());");
+                TextClass.AppendLine("             ModelBuilder.Configurations.Add(new " + Model.ClassName + "Mapper());   ");
             }
 
-            TextClass.AppendLine("        }");
-            TextClass.AppendLine("    }");
-            TextClass.AppendLine("}");
+            TextClass.AppendLine("        }                                                                                ");
+            TextClass.AppendLine("    }                                                                                    ");
+            TextClass.AppendLine("}                                                                                        ");
 
-            return CreateFile("DbContext", "AppContext"); 
+            return CreateFile("DbContext", "AppContext");
+
         }
 
         public String BuildRespository()
@@ -420,270 +387,136 @@ namespace Gerador.Infrastructure
             var OutputClassDataContextName = ConfigurationManager.AppSettings["NomeDoContext"].ToString();
 
             TextClass = new StringBuilder();
-            TextClass.AppendLine("using System;");
-            TextClass.AppendLine("using System.Collections.Generic;");
-            TextClass.AppendLine("using System.Linq;");
-            TextClass.AppendLine("using System.Text;");
-            TextClass.AppendLine("using System.Threading.Tasks;");     
-            TextClass.AppendLine("using System.Data.Entity;");
-            TextClass.AppendLine("using System.Linq.Expressions;");
-            TextClass.AppendLine("using System.Configuration;");
-            TextClass.AppendLine("using " + ProjectName + ".Data.Repository;");
-            TextClass.AppendLine("using " + ProjectName + ".Data.ApplicationContext;");
-            TextClass.AppendLine("");
-            TextClass.AppendLine("namespace " + ProjectName + ".Data.Repository");
-            TextClass.AppendLine("{");
-            TextClass.AppendLine("    public class RepositoryGeneric<TEntity> : IDisposable, IRepository<TEntity> where TEntity : class");
-            TextClass.AppendLine("    {");
-            TextClass.AppendLine("        private DbSet<TEntity> _DbSet;");
-            TextClass.AppendLine("        private " + OutputClassDataContextName + " _Context;");
-            TextClass.AppendLine("");
-            TextClass.AppendLine("        public RepositoryGeneric(" + OutputClassDataContextName + " Context)");
-            TextClass.AppendLine("        {");
-            TextClass.AppendLine("            this._Context = Context;");
-            TextClass.AppendLine("            this._DbSet = Context.Set<TEntity>();");
-            TextClass.AppendLine("        }");
-            TextClass.AppendLine("");
-            TextClass.AppendLine("        public void Add(TEntity Model)");
-            TextClass.AppendLine("        {");
-            TextClass.AppendLine("            try");
-            TextClass.AppendLine("            {");
-            TextClass.AppendLine("                _DbSet.Add(Model);");
-            TextClass.AppendLine("                _Context.SaveChanges();");
-            TextClass.AppendLine("            }");
-            TextClass.AppendLine("            catch (System.Data.Entity.Validation.DbEntityValidationException Ex)");
-            TextClass.AppendLine("            {");
-            TextClass.AppendLine("                CreateFileLog(Ex.InnerException.Message);");
-            TextClass.AppendLine("                throw ExceptionValidationError(Ex);");
-            TextClass.AppendLine("            }");
-            TextClass.AppendLine("        }");
-            TextClass.AppendLine("");
-            TextClass.AppendLine("        public TEntity AddGetItem(TEntity Model)");
-            TextClass.AppendLine("        {");
-            TextClass.AppendLine("            try");
-            TextClass.AppendLine("            {");
-            TextClass.AppendLine("                _DbSet.Add(Model);");
-            TextClass.AppendLine("                _Context.SaveChanges();");
-            TextClass.AppendLine("                return (Model);");
-            TextClass.AppendLine("            }");
-            TextClass.AppendLine("            catch (System.Data.Entity.Validation.DbEntityValidationException Ex)");
-            TextClass.AppendLine("            {");
-            TextClass.AppendLine("                CreateFileLog(Ex.InnerException.Message);");
-            TextClass.AppendLine("                throw ExceptionValidationError(Ex);");
-            TextClass.AppendLine("            }");
-            TextClass.AppendLine("        }");
-            TextClass.AppendLine("");
-            TextClass.AppendLine("        public void AddAll(List<TEntity> Collection)");
-            TextClass.AppendLine("        {");
-            TextClass.AppendLine("            foreach (var model in Collection) { this.Add(model); }");
-            TextClass.AppendLine("        }");
-            TextClass.AppendLine("");
-            TextClass.AppendLine("        public void Edit(TEntity Model)");
-            TextClass.AppendLine("        {");
-            TextClass.AppendLine("            //_DbSet.Attach(Model);");
-            TextClass.AppendLine("            //_Context.SaveChanges();");
-            TextClass.AppendLine("            // Or -->...");
-            TextClass.AppendLine("            try");
-            TextClass.AppendLine("            {");
-            TextClass.AppendLine("                var entry = _Context.Entry<TEntity>(Model);");
-            TextClass.AppendLine("                var pkey = _DbSet.Create().GetType().GetProperty(\"ID\").GetValue(Model);");
-            TextClass.AppendLine("");
-            TextClass.AppendLine("                if (entry.State == EntityState.Detached)");
-            TextClass.AppendLine("                {");
-            TextClass.AppendLine("                    var set = _Context.Set<TEntity>();");
-            TextClass.AppendLine("                    TEntity AttachedEntity = set.Find(pkey);");
-            TextClass.AppendLine("");
-            TextClass.AppendLine("                    if (AttachedEntity != null)");
-            TextClass.AppendLine("                    {");
-            TextClass.AppendLine("                        var AttachedEntry = _Context.Entry(AttachedEntity);");
-            TextClass.AppendLine("                        AttachedEntry.CurrentValues.SetValues(Model);");
-            TextClass.AppendLine("                    }");
-            TextClass.AppendLine("                    else");
-            TextClass.AppendLine("                    {");
-            TextClass.AppendLine("                        entry.State = EntityState.Modified;");
-            TextClass.AppendLine("                    }");
-            TextClass.AppendLine("                }");
-            TextClass.AppendLine("");
-            TextClass.AppendLine("                _Context.SaveChanges();");
-            TextClass.AppendLine("            }");
-            TextClass.AppendLine("            catch (System.Data.Entity.Validation.DbEntityValidationException Ex)");
-            TextClass.AppendLine("            {");
-            TextClass.AppendLine("                CreateFileLog(Ex.InnerException.Message);");
-            TextClass.AppendLine("                throw ExceptionValidationError(Ex);");
-            TextClass.AppendLine("            }");
-            TextClass.AppendLine("        }");
-            TextClass.AppendLine("");
-            TextClass.AppendLine("        public TEntity UpdateGetItem(TEntity Model)");
-            TextClass.AppendLine("        {");
-            TextClass.AppendLine("            //_DbSet.Attach(Model);");
-            TextClass.AppendLine("            //_Context.SaveChanges();");
-            TextClass.AppendLine("            // Or -->...");
-            TextClass.AppendLine("            try");
-            TextClass.AppendLine("            {");
-            TextClass.AppendLine("                var entry = _Context.Entry<TEntity>(Model);");
-            TextClass.AppendLine("                var pkey = _DbSet.Create().GetType().GetProperty(\"ID\").GetValue(Model);");
-            TextClass.AppendLine("");
-            TextClass.AppendLine("                if (entry.State == EntityState.Detached)");
-            TextClass.AppendLine("                {");
-            TextClass.AppendLine("                    var set = _Context.Set<TEntity>();");
-            TextClass.AppendLine("                    TEntity AttachedEntity = set.Find(pkey);");
-            TextClass.AppendLine("");
-            TextClass.AppendLine("                    if (AttachedEntity != null)");
-            TextClass.AppendLine("                    {");
-            TextClass.AppendLine("                        var AttachedEntry = _Context.Entry(AttachedEntity);");
-            TextClass.AppendLine("                        AttachedEntry.CurrentValues.SetValues(Model);");
-            TextClass.AppendLine("                    }");
-            TextClass.AppendLine("                    else");
-            TextClass.AppendLine("                    {");
-            TextClass.AppendLine("                        entry.State = EntityState.Modified;");
-            TextClass.AppendLine("                    }");
-            TextClass.AppendLine("                }");
-            TextClass.AppendLine("");
-            TextClass.AppendLine("                _Context.SaveChanges();");
-            TextClass.AppendLine("                return (Model);");
-            TextClass.AppendLine("            }");
-            TextClass.AppendLine("            catch (System.Data.Entity.Validation.DbEntityValidationException Ex)");
-            TextClass.AppendLine("            {");
-            TextClass.AppendLine("                CreateFileLog(Ex.InnerException.Message);");
-            TextClass.AppendLine("                throw ExceptionValidationError(Ex);");
-            TextClass.AppendLine("            }");
-            TextClass.AppendLine("        }");
-            TextClass.AppendLine("");
-            TextClass.AppendLine("        public void Delete(TEntity Model)");
-            TextClass.AppendLine("        {");
-            TextClass.AppendLine("            try");
-            TextClass.AppendLine("            {");
-            TextClass.AppendLine("                _DbSet.Remove(Model);");
-            TextClass.AppendLine("                _Context.SaveChanges();");
-            TextClass.AppendLine("            }");
-            TextClass.AppendLine("            catch (System.Data.Entity.Validation.DbEntityValidationException Ex)");
-            TextClass.AppendLine("            {");
-            TextClass.AppendLine("                CreateFileLog(Ex.InnerException.Message);");
-            TextClass.AppendLine("                throw ExceptionValidationError(Ex);");
-            TextClass.AppendLine("            }");
-            TextClass.AppendLine("        }");
-            TextClass.AppendLine("");
-            TextClass.AppendLine("        public TEntity GetItem(Expression<Func<TEntity, bool>> Filter = null)");
-            TextClass.AppendLine("        {");
-            TextClass.AppendLine("            try");
-            TextClass.AppendLine("            {");
-            TextClass.AppendLine("                IQueryable<TEntity> Query = _DbSet;");
-            TextClass.AppendLine("                if (Filter != null) { Query = Query.Where(Filter); }");
-            TextClass.AppendLine("                return Query.ToList().FirstOrDefault();");
-            TextClass.AppendLine("            }");
-            TextClass.AppendLine("            catch (System.Data.Entity.Validation.DbEntityValidationException Ex)");
-            TextClass.AppendLine("            {");
-            TextClass.AppendLine("                CreateFileLog(Ex.InnerException.Message);");
-            TextClass.AppendLine("                throw ExceptionValidationError(Ex);");
-            TextClass.AppendLine("            }");
-            TextClass.AppendLine("        }");
-            TextClass.AppendLine("");
-            TextClass.AppendLine("        public virtual IQueryable<TEntity> GetByFilter(Expression<Func<TEntity, bool>> Filter = null, Func<IQueryable<TEntity>, IOrderedQueryable<TEntity>> OrderBy = null)");
-            TextClass.AppendLine("        {");
-            TextClass.AppendLine("            try");
-            TextClass.AppendLine("            {");
-            TextClass.AppendLine("                IQueryable<TEntity> Query = _DbSet;");
-            TextClass.AppendLine("                if (Filter != null) { Query = Query.Where(Filter); }");
-            TextClass.AppendLine("                if (OrderBy != null) { return OrderBy(Query); } else { return Query; }");
-            TextClass.AppendLine("            }");
-            TextClass.AppendLine("            catch (System.Data.Entity.Validation.DbEntityValidationException Ex)");
-            TextClass.AppendLine("            {");
-            TextClass.AppendLine("                CreateFileLog(Ex.InnerException.Message);");
-            TextClass.AppendLine("                throw ExceptionValidationError(Ex);");
-            TextClass.AppendLine("            }");
-            TextClass.AppendLine("        }");
-            TextClass.AppendLine("");  
-            TextClass.AppendLine("        public virtual IQueryable<TEntity> GetAll()");
-            TextClass.AppendLine("        {");
-            TextClass.AppendLine("           return (_DbSet.AsQueryable<TEntity>());");
-            TextClass.AppendLine("        }");
-            TextClass.AppendLine("");
-            TextClass.AppendLine("        public void DeleteAll(Expression<Func<TEntity, bool>> Filter = null)");
-            TextClass.AppendLine("        {");
-            TextClass.AppendLine("            try");
-            TextClass.AppendLine("            {");
-            TextClass.AppendLine("                IQueryable<TEntity> Query = _DbSet;");
-            TextClass.AppendLine("                List<TEntity> CollectionTEntity = Query.Where(Filter).ToList();");
-            TextClass.AppendLine("");
-            TextClass.AppendLine("                foreach (var ItemTEntity in CollectionTEntity)");
-            TextClass.AppendLine("                {");
-            TextClass.AppendLine("                    _DbSet.Remove(ItemTEntity);");
-            TextClass.AppendLine("                }");
-            TextClass.AppendLine("");
-            TextClass.AppendLine("                _Context.SaveChanges();");
-            TextClass.AppendLine("            }");
-            TextClass.AppendLine("            catch (Exception Ex)");
-            TextClass.AppendLine("            {");
-            TextClass.AppendLine("                CreateFileLog(Ex.InnerException.Message);");
-            TextClass.AppendLine("            }");
-            TextClass.AppendLine("        }");
-            TextClass.AppendLine("");
-            TextClass.AppendLine("        private Exception ExceptionValidationError(System.Data.Entity.Validation.DbEntityValidationException Ex)");
-            TextClass.AppendLine("        {");
-            TextClass.AppendLine("            Exception Raise = Ex;");
-            TextClass.AppendLine("            foreach (var ValidationErrors in Ex.EntityValidationErrors)");
-            TextClass.AppendLine("            {");
-            TextClass.AppendLine("                foreach (var ValidationError in ValidationErrors.ValidationErrors)");
-            TextClass.AppendLine("                {");
-            TextClass.AppendLine("                    var Message = String.Format(\"{0}:{1}\", ValidationErrors.Entry.Entity.ToString(), ValidationError.ErrorMessage);");
-            TextClass.AppendLine("                    Raise = new InvalidOperationException(Message, Raise);");
-            TextClass.AppendLine("                }");
-            TextClass.AppendLine("            }");
-            TextClass.AppendLine("            return (Raise);");
-            TextClass.AppendLine("        }");
-            TextClass.AppendLine("");
-            TextClass.AppendLine("        private void CreateFileLog(String ErrorMessage, String PathLog = \"\")");
-            TextClass.AppendLine("        {");
-            TextClass.AppendLine("            var Path = (String.IsNullOrEmpty(PathLog) ? String.Format(ConfigurationManager.AppSettings[\"Log\"].ToString()) : PathLog);");
-            TextClass.AppendLine("");
-            TextClass.AppendLine("            if (!System.IO.File.Exists(Path))");
-            TextClass.AppendLine("            {");
-            TextClass.AppendLine("                using (System.IO.StreamWriter SWriter = System.IO.File.CreateText(Path))");
-            TextClass.AppendLine("                {");
-            TextClass.AppendLine("                    SWriter.WriteLine(ErrorMessage);");
-            TextClass.AppendLine("                }");
-            TextClass.AppendLine("            }");
-            TextClass.AppendLine("        }");
-            TextClass.AppendLine("");
-            TextClass.AppendLine("        public void Dispose()");
-            TextClass.AppendLine("        {");
-            TextClass.AppendLine("            _DbSet = null;");
-            TextClass.AppendLine("            _Context.Dispose();");
-            TextClass.AppendLine("            GC.SuppressFinalize(this);");
-            TextClass.AppendLine("        }");
-            TextClass.AppendLine("    }");
-            TextClass.AppendLine("}");  
+            TextClass.AppendLine("using System;																															");
+            TextClass.AppendLine("using System.Collections.Generic;                                                                                                     ");
+            TextClass.AppendLine("using System.Linq;                                                                                                                    ");
+            TextClass.AppendLine("using System.Linq.Expressions;                                                                                                        ");
+            TextClass.AppendLine("using System.Text;                                                                                                                    ");
+            TextClass.AppendLine("using System.Threading.Tasks;                                                                                                         ");
+            TextClass.AppendLine("using System.Data;                                                                                                                    ");
+            TextClass.AppendLine("using System.Data.Entity;                                                                                                             ");
+            TextClass.AppendLine("using " + ProjectName + ".Data.Interface;                                                                                                           ");
+            TextClass.AppendLine("                                                                                                                                      ");
+            TextClass.AppendLine("namespace " + ProjectName + ".Data                                                                                                                  ");
+            TextClass.AppendLine("{                                                                                                                                     ");
+            TextClass.AppendLine("    public class Repository<TEntity> : IRepository<TEntity>, IDisposable where TEntity : class                                        ");
+            TextClass.AppendLine("    {                                                                                                                                 ");
+            TextClass.AppendLine("        private DbSet<TEntity> _dbSet;                                                                                                ");
+            TextClass.AppendLine("                                                                                                                                      ");
+            TextClass.AppendLine("        private " + ProjectName + "Context _dbContext;                                                                                                 ");
+            TextClass.AppendLine("                                                                                                                                      ");
+            TextClass.AppendLine("        internal Boolean _preConfig = false;                                                                                          ");
+            TextClass.AppendLine("                                                                                                                                      ");
+            TextClass.AppendLine("        public Repository(" + ProjectName + "Context dbContext)                                                                                        ");
+            TextClass.AppendLine("        {                                                                                                                             ");
+            TextClass.AppendLine("            InitializePreConfiguration(dbContext);                                                                                    ");
+            TextClass.AppendLine("        }                                                                                                                             ");
+            TextClass.AppendLine("                                                                                                                                      ");
+            TextClass.AppendLine("        public IQueryable<TEntity> GetAll()                                                                                           ");
+            TextClass.AppendLine("        {                                                                                                                             ");
+            TextClass.AppendLine("            return _dbContext.Set<TEntity>();                                                                                         ");
+            TextClass.AppendLine("        }                                                                                                                             ");
+            TextClass.AppendLine("                                                                                                                                      ");
+            TextClass.AppendLine("        public IQueryable<TEntity> GetByFilters(Expression<Func<TEntity, bool>> predicate)                                            ");
+            TextClass.AppendLine("        {                                                                                                                             ");
+            TextClass.AppendLine("            return _dbContext.Set<TEntity>().Where(predicate);                                                                        ");
+            TextClass.AppendLine("        }                                                                                                                             ");
+            TextClass.AppendLine("                                                                                                                                      ");
+            TextClass.AppendLine("        public TEntity Find(params object[] key)                                                                                      ");
+            TextClass.AppendLine("        {                                                                                                                             ");
+            TextClass.AppendLine("            return _dbContext.Set<TEntity>().Find(key);                                                                               ");
+            TextClass.AppendLine("        }                                                                                                                             ");
+            TextClass.AppendLine("                                                                                                                                      ");
+            TextClass.AppendLine("        public TEntity First(Expression<Func<TEntity, bool>> predicate)                                                               ");
+            TextClass.AppendLine("        {                                                                                                                             ");
+            TextClass.AppendLine("            return _dbContext.Set<TEntity>().Where(predicate).FirstOrDefault();                                                       ");
+            TextClass.AppendLine("        }                                                                                                                             ");
+            TextClass.AppendLine("                                                                                                                                      ");
+            TextClass.AppendLine("        public void Add(TEntity entity)                                                                                               ");
+            TextClass.AppendLine("        {                                                                                                                             ");
+            TextClass.AppendLine("            _dbContext.Set<TEntity>().Add(entity);                                                                                    ");
+            TextClass.AppendLine("        }                                                                                                                             ");
+            TextClass.AppendLine("                                                                                                                                      ");
+            TextClass.AppendLine("        public void AddAll(List<TEntity> collection)                                                                                  ");
+            TextClass.AppendLine("        {                                                                                                                             ");
+            TextClass.AppendLine("            foreach (var item in collection)                                                                                          ");
+            TextClass.AppendLine("            {                                                                                                                         ");
+            TextClass.AppendLine("                _dbContext.Set<TEntity>().Add(item);                                                                                  ");
+            TextClass.AppendLine("            }                                                                                                                         ");
+            TextClass.AppendLine("        }                                                                                                                             ");
+            TextClass.AppendLine("                                                                                                                                      ");
+            TextClass.AppendLine("        public void Update(TEntity entity)                                                                                            ");
+            TextClass.AppendLine("        {                                                                                                                             ");
+            TextClass.AppendLine("            _dbContext.Entry(entity).State = EntityState.Modified;                                                                    ");
+            TextClass.AppendLine("        }                                                                                                                             ");
+            TextClass.AppendLine("                                                                                                                                      ");
+            TextClass.AppendLine("        public void Delete(Expression<Func<TEntity, bool>> predicate)                                                                 ");
+            TextClass.AppendLine("        {                                                                                                                             ");
+            TextClass.AppendLine("            _dbContext.Set<TEntity>()                                                                                                 ");
+            TextClass.AppendLine("           .Where(predicate).ToList()                                                                                                 ");
+            TextClass.AppendLine("           .ForEach(del => _dbContext.Set<TEntity>().Remove(del));                                                                    ");
+            TextClass.AppendLine("        }                                                                                                                             ");
+            TextClass.AppendLine("                                                                                                                                      ");
+            TextClass.AppendLine("        /// <summary>                                                                                                                 ");
+            TextClass.AppendLine("        /// Método inicial principal que é iniciado mediante as configuracoes, isso deixa o entity framework mais rapido ou mais lento");
+            TextClass.AppendLine("        /// Se \"_preConfig\" false nao entra aqui e continua com as configuracoes padrao do entity framework.                        ");
+            TextClass.AppendLine("        /// </summary>                                                                                                                ");
+            TextClass.AppendLine("        internal void InitializePreConfiguration(" + ProjectName + "Context dbContext)                                                       ");
+            TextClass.AppendLine("        {                                                                                                                             ");
+            TextClass.AppendLine("            this._dbSet = dbContext.Set<TEntity>();                                                                                   ");
+            TextClass.AppendLine("            this._dbContext = dbContext;                                                                                              ");
+            TextClass.AppendLine("                                                                                                                                      ");
+            TextClass.AppendLine("            if (_preConfig)                                                                                                           ");
+            TextClass.AppendLine("            {                                                                                                                         ");
+            TextClass.AppendLine("                this._dbContext.Configuration.AutoDetectChangesEnabled = false;  // Atencão ao modificar!                             ");
+            TextClass.AppendLine("                this._dbContext.Configuration.LazyLoadingEnabled = true;         // Atencão ao modificar!                             ");
+            TextClass.AppendLine("                this._dbContext.Configuration.ProxyCreationEnabled = false;      // Atencão ao modificar!                             ");
+            TextClass.AppendLine("                this._dbContext.Configuration.ValidateOnSaveEnabled = true;      // Atencão ao modificar!                             ");
+            TextClass.AppendLine("                this._dbContext.Configuration.UseDatabaseNullSemantics = true;   // Atencão ao modificar!                             ");
+            TextClass.AppendLine("            }                                                                                                                         ");
+            TextClass.AppendLine("        }                                                                                                                             ");
+            TextClass.AppendLine("                                                                                                                                      ");
+            TextClass.AppendLine("        public void Dispose()                                                                                                         ");
+            TextClass.AppendLine("        {                                                                                                                             ");
+            TextClass.AppendLine("            if (_dbContext != null)                                                                                                   ");
+            TextClass.AppendLine("            {                                                                                                                         ");
+            TextClass.AppendLine("                _dbContext.Dispose();                                                                                                 ");
+            TextClass.AppendLine("            }                                                                                                                         ");
+            TextClass.AppendLine("            GC.SuppressFinalize(this);                                                                                                ");
+            TextClass.AppendLine("        }                                                                                                                             ");
+            TextClass.AppendLine("    }                                                                                                                                 ");
+            TextClass.AppendLine("}                                                                                                                                     ");
 
-            return CreateFile("RepositoryGeneric", "Repository"); 
+            return CreateFileMadatory("Repository", FilePath + @"\Repository");
         }
 
         public String BuildIRespository()
         {
             TextClass = new StringBuilder();
-            TextClass.AppendLine("using System;");
-            TextClass.AppendLine("using System.Collections.Generic;");
-            TextClass.AppendLine("using System.Linq;");
-            TextClass.AppendLine("using System.Linq.Expressions;");
-            TextClass.AppendLine("using System.Text;");
-            TextClass.AppendLine("using System.Threading.Tasks;");
-            TextClass.AppendLine("");
-            TextClass.AppendLine("namespace " + ProjectName + ".Data.Repository");
-            TextClass.AppendLine("{");
-            TextClass.AppendLine("    public interface IRepository<TEntity>");
-            TextClass.AppendLine("    {");
-            TextClass.AppendLine("        void Add(TEntity Model);");
-            TextClass.AppendLine("        void Edit(TEntity Model);");
-            TextClass.AppendLine("        void Delete(TEntity Model);");
-            TextClass.AppendLine("        void DeleteAll(Expression<Func<TEntity, bool>> Filter = null);");
-            TextClass.AppendLine("        TEntity AddGetItem(TEntity Model);");
-            TextClass.AppendLine("        TEntity UpdateGetItem(TEntity Model);");
-            TextClass.AppendLine("        TEntity GetItem(Expression<Func<TEntity, bool>> Filter = null);");
-            TextClass.AppendLine("        IQueryable<TEntity> GetByFilter(Expression<Func<TEntity, bool>> Filter = null, Func<IQueryable<TEntity>, IOrderedQueryable<TEntity>> OrderBy = null);");
-            TextClass.AppendLine("        IQueryable<TEntity> GetAll();");
-            TextClass.AppendLine("    }");
-            TextClass.AppendLine("}");
 
-            return CreateFile("IRepository", "Repository"); 
+            TextClass.AppendLine("using System;                                                                       ");            
+            TextClass.AppendLine("using System.Collections.Generic;                                                   ");
+            TextClass.AppendLine("using System.Linq;                                                                  ");
+            TextClass.AppendLine("using System.Linq.Expressions;                                                      ");
+            TextClass.AppendLine("using System.Text;                                                                  ");
+            TextClass.AppendLine("using System.Threading.Tasks;                                                       ");
+            TextClass.AppendLine("                                                                                    ");
+            TextClass.AppendLine("namespace " + ProjectName + ".Data.Interface                                        ");
+            TextClass.AppendLine("{                                                                                   ");
+            TextClass.AppendLine("    public interface IRepository<TEntity> where TEntity : class                     ");
+            TextClass.AppendLine("    {                                                                               ");
+            TextClass.AppendLine("        IQueryable<TEntity> GetAll();                                               ");
+            TextClass.AppendLine("        IQueryable<TEntity> GetByFilters(Expression<Func<TEntity, bool>> predicate);");
+            TextClass.AppendLine("        TEntity Find(params object[] key);                                          ");
+            TextClass.AppendLine("        TEntity First(Expression<Func<TEntity, bool>> predicate);                   ");
+            TextClass.AppendLine("        void Add(TEntity entity);                                                   ");
+            TextClass.AppendLine("        void Delete(Expression<Func<TEntity, bool>> predicate);                     ");
+            TextClass.AppendLine("        void Dispose();                                                             ");
+            TextClass.AppendLine("    }                                                                               ");
+            TextClass.AppendLine("}                                                                                   ");
+
+            return CreateFileMadatory("IRepository", FilePath + @"\Interface");
+
         }
 
         private String CreateFile(String ClassName, String Folder)
@@ -696,6 +529,52 @@ namespace Gerador.Infrastructure
             if (!DirInfo.Exists) { DirInfo.Create(); }
             using (TextWriter Writer = File.CreateText(FullFile)) { Writer.WriteLine(TextClass.ToString()); }
             return FileName;
+        }
+
+        private String CreateFileCommom(String ClassName, String Folder)
+        {
+            var FileName = String.Format(@"{0}.{1}", ClassName, "cs");
+            var Diretory = String.Format(@"{0}\{1}", FilePathCommon, Folder);
+            var FullFile = String.Format(@"{0}\{1}", Diretory, FileName);
+            var DirInfo = new DirectoryInfo(Diretory);
+
+            if (!DirInfo.Exists)
+            {
+                DirInfo.Create();
+                using (TextWriter Writer = File.CreateText(FullFile)) { Writer.WriteLine(TextClass.ToString()); }
+            }
+            else
+            {
+                if (!File.Exists(FullFile))
+                {
+                    using (TextWriter Writer = File.CreateText(FullFile)) { Writer.WriteLine(TextClass.ToString()); }
+                }
+                else
+                {
+                    FileName = FileName + " não sera sobre escrito...";
+                }
+            }
+            
+            return FileName;
+        }
+
+        private String CreateFileMadatory(String ClassName, String Folder)
+        {
+            var FullFile = String.Format(@"{0}\{1}.{2}", Folder, ClassName, "cs");
+
+            if (File.Exists(FullFile))
+            {
+                File.Delete(FullFile);
+            }
+            else
+            {
+
+                Directory.CreateDirectory(Folder);
+                using (TextWriter Writer = File.CreateText(FullFile)) { Writer.WriteLine(TextClass.ToString()); }
+
+            }
+
+            return String.Format("{0}.{1}", ClassName, "cs"); ;
         }
 
     }
