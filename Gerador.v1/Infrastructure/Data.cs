@@ -564,7 +564,8 @@ namespace Gerador.Infrastructure
 
             if (File.Exists(FullFile))
             {
-                File.Delete(FullFile);
+                //File.Delete(FullFile);
+                using (TextWriter Writer = File.CreateText(FullFile)) { Writer.WriteLine(TextClass.ToString()); }
             }
             else
             {
